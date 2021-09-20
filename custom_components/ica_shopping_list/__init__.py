@@ -122,10 +122,6 @@ def async_setup(hass, config):
     hass.http.register_view(UpdateShoppingListItemView)
     hass.http.register_view(ClearCompletedItemsView)
 
-    hass.components.frontend.async_register_built_in_panel(
-        "shopping-list", "shopping_list", "mdi:cart"
-    )
-
     hass.components.websocket_api.async_register_command(
         WS_TYPE_SHOPPING_LIST_ITEMS, websocket_handle_items, SCHEMA_WEBSOCKET_ITEMS
     )
@@ -144,7 +140,6 @@ def async_setup(hass, config):
     )
 
     #Connect.authenticate(icaUser, icaPassword)
-
 
     return True
 
