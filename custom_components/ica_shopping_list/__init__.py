@@ -185,6 +185,7 @@ class ShoppingData:
         URI = "/api/user/offlineshoppinglists"
         #api_data = Connect.post_request(URI, item)
         api_data = await hass.async_add_executor_job(Connect.post_request, URI, item)
+        
         _LOGGER.debug("Adding product: " + str(item))
         for row in api_data["Rows"]:
             name = row["ProductName"].capitalize()
@@ -490,7 +491,7 @@ async def websocket_handle_update(hass, connection, msg):
 @callback
 def websocket_handle_clear(hass, connection, msg):
     """Handle clearing shopping_list items."""
-    hass.data[DOMAIN].async_clear_completed()
+    hass.data[DOMAIN].async_clear_completed(hass)
     hass.bus.async_fire(EVENT)
     connection.send_message(websocket_api.result_message(msg["id"]))
 
@@ -507,39 +508,44 @@ class Connect:
     AUTHTICKET = None
     listId = None
 
-    def glob_user():
+    async def glob_user():
         global icaUser
         return icaUser
 
-    def glob_password():
+    async def glob_password():
         global icaPassword
         return icaPassword
 
-    def glob_list():
+    async def glob_list():
         global icaList
         return icaList
 
-    @staticmethod
-    def get_request(uri):
+    #@staticmethod
+	#def get_request(uri):
+    async def get_request(uri):
         """Do API request."""
         if Connect.AUTHTICKET is None:
-            renewTicket = Connect.authenticate()
+            #renewTicket = Connect.authenticate()
+            renewTicket = await hass.async_add_executor_job(Connect.authenticate)
             Connect.AUTHTICKET = renewTicket["authTicket"]
             Connect.listId = renewTicket["listId"]
 
         url = "https://handla.api.ica.se" + uri + "/" + Connect.listId
         headers = {"Content-Type": "application/json", "AuthenticationTicket": Connect.AUTHTICKET}
-        req = requests.get(url, headers=headers)
+        #req = requests.get(url, headers=headers)
+        req = await hass.async_add_executor_job(requests.get, url, headers=headers)
 
         if req.status_code == 401:
             _LOGGER.debug("API key expired. Aquire new")
 
-            renewTicket = Connect.authenticate()
+            #renewTicket = Connect.authenticate()
+			renewTicket = await hass.async_add_executor_job(Connect.authenticate)
             Connect.AUTHTICKET = renewTicket["authTicket"]
             Connect.listId = renewTicket["listId"]
             
             headers = {"Content-Type": "application/json", "AuthenticationTicket": Connect.AUTHTICKET}
-            req = requests.get(url, headers=headers)
+            #req = requests.get(url, headers=headers)
+            req = await hass.async_add_executor_job(requests.get, url, headers=headers)
 
             if req.status_code != requests.codes.ok:
                 _LOGGER.exception("API request returned error %d", req.status_code)
@@ -547,7 +553,8 @@ class Connect:
             else:
                 _LOGGER.debug("API request returned OK %d", req.text)
 
-                json_data = json.loads(req.content)
+                #json_data = json.loads(req.content)
+				json_data = await req.json()
                 return json_data
 
         elif req.status_code != requests.codes.ok:
@@ -555,31 +562,37 @@ class Connect:
         else:
             _LOGGER.debug("API request returned OK %d", req.text)
 
-        json_data = json.loads(req.content)
+        #json_data = json.loads(req.content)
+		json_data = await req.json()
         return json_data
 
-    @staticmethod
-    def post_request(uri, data):
+    #@staticmethod
+    async def post_request(uri, data):
+    #def post_request(uri, data):
         """Do API request."""
         if Connect.AUTHTICKET is None:
-            renewTicket = Connect.authenticate()
+            #renewTicket = Connect.authenticate()
+            renewTicket = await hass.async_add_executor_job(Connect.authenticate)
             Connect.AUTHTICKET = renewTicket["authTicket"]
             Connect.listId = renewTicket["listId"]
 
         url = "https://handla.api.ica.se" + uri + "/" + Connect.listId + "/sync"
         _LOGGER.debug("URL: " + url)
         headers = {"Content-Type": "application/json", "AuthenticationTicket": Connect.AUTHTICKET}
-        req = requests.post(url, headers=headers, data=data)
+        #req = requests.post(url, headers=headers, data=data)
+        req = await hass.async_add_executor_job(requests.post, url, headers=headers, data=data)
 
         if req.status_code == 401:
             _LOGGER.debug("API key expired. Aquire new")
 
-            renewTicket = Connect.authenticate()
+            renewTicket = await hass.async_add_executor_job(Connect.authenticate)
+            #renewTicket = Connect.authenticate()
             Connect.AUTHTICKET = renewTicket["authTicket"]
             Connect.listId = renewTicket["listId"]
             
             headers = {"Content-Type": "application/json", "AuthenticationTicket": Connect.AUTHTICKET}
-            req = requests.post(url, headers=headers)
+            #req = requests.post(url, headers=headers)
+            req = await hass.async_add_executor_job(requests.post, url, headers=headers)
 
             if req.status_code != requests.codes.ok:
                 _LOGGER.exception("API request returned error %d", req.status_code)
@@ -587,7 +600,8 @@ class Connect:
             else:
                 _LOGGER.debug("API request returned OK %d", req.text)
 
-                json_data = json.loads(req.content)
+                #json_data = json.loads(req.content)
+				json_data = await req.json()
                 return json_data
 
         elif req.status_code != requests.codes.ok:
@@ -595,11 +609,13 @@ class Connect:
         else:
             _LOGGER.debug("API request returned OK %d", req.text)
 
-        json_data = json.loads(req.content)
+        #json_data = json.loads(req.content)
+		json_data = await req.json()
         return json_data
 
-    @staticmethod
-    def authenticate():
+    #@staticmethod
+    #def authenticate():
+	async def authenticate():
         """Do API request"""
 
         icaUser = Connect.glob_user()
@@ -608,7 +624,8 @@ class Connect:
         listId = None
 
         url = "https://handla.api.ica.se/api/login"
-        req = requests.get(url, auth=(str(icaUser), str(icaPassword)))
+        #req = requests.get(url, auth=(str(icaUser), str(icaPassword)))
+        req = await hass.async_add_executor_job(requests.get, url, auth=(str(icaUser), str(icaPassword)))
 
         if req.status_code != requests.codes.ok:
             _LOGGER.exception("API request returned error %d", req.status_code)
@@ -619,8 +636,10 @@ class Connect:
             if Connect.listId is None:
                 url = 'https://handla.api.ica.se/api/user/offlineshoppinglists'
                 headers = {"Content-Type": "application/json", "AuthenticationTicket": authTick}
-                req = requests.get(url, headers=headers)
-                response = json.loads(req.content)
+                #req = requests.get(url, headers=headers)
+                req = await hass.async_add_executor_job(requests.get, url, headers=headers)
+                #response = json.loads(req.content)
+				response = await req.json()
 
                 for lists in response["ShoppingLists"]:
                     if lists["Title"] == icaList:
@@ -637,13 +656,16 @@ class Connect:
                     headers = {"Content-Type": "application/json", "AuthenticationTicket": authTick}
                     
                     _LOGGER.debug("List does not exist. Creating %s", icaList)
-                    req = requests.post(url, headers=headers, data=data)
+                    #req = requests.post(url, headers=headers, data=data)
+					req = await hass.async_add_executor_job(requests.post, url, headers=headers, data=data)
 
                     if req.status_code == 200:
                         url = 'https://handla.api.ica.se/api/user/offlineshoppinglists'
                         headers = {"Content-Type": "application/json", "AuthenticationTicket": authTick}
-                        req = requests.get(url, headers=headers)
-                        response = json.loads(req.content)
+                        #req = requests.get(url, headers=headers)
+                        req = await hass.async_add_executor_job(requests.get, url, headers=headers)
+                        #response = json.loads(req.content)
+						response = await req.json()
 
                         _LOGGER.debug(response)
 
