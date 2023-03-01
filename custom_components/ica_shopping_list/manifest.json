@@ -1,7 +1,7 @@
 {
   "domain": "ica_shopping_list",
   "name": "Shopping list for ICA",
-  "documentation": "https://www.github.com/kayjei/ica_shopping_list",
+  "documentation": "https://www.github.com/nylitz/ica_shopping_list",
   "requirements": [],
   "dependencies": [
   ],
